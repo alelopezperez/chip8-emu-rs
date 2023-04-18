@@ -68,10 +68,73 @@ type StackPointer = u16;
 // The Keypad one byte per key and key is 0-9 and A-F each key is one byte or 8 bit
 type KeyPad = [u8; 16];
 
+// 60hz = 60 opcode a second.
+
+struct Chip8 {
+    memory: [u8; 4096],
+    cpu_registers: [u8; 16],
+    i: u16,
+    pc: u16,
+    display: [u8; 64 * 32],
+    delay_timer: u8,
+    sound_timer: u8,
+    stack: [u16; 16],
+    stack_pointer: u16,
+    key_pad: [u8; 5],
+}
+
+impl Chip8 {
+    fn initialize() -> Self {
+        let mut chip = Self {
+            memory: [0; 4096],
+            cpu_registers: [0; 16],
+            i: 0,
+            pc: 0x200,
+            display: [0; 64 * 32],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0x12; 16],
+            stack_pointer: 0,
+            key_pad: [0; 5],
+        };
+        let default_font = [
+            [0xF0 as u8, 0x90, 0x90, 0x90, 0xF0],
+            [0x20, 0x60, 0x20, 0x20, 0x70],
+            [0xF0, 0x10, 0xF0, 0x80, 0xF0],
+            [0xF0, 0x10, 0xF0, 0x10, 0xF0],
+            [0x90, 0x90, 0xF0, 0x10, 0x10],
+            [0xF0, 0x80, 0xF0, 0x10, 0xF0],
+            [0xF0, 0x80, 0xF0, 0x90, 0xF0],
+            [0xF0, 0x10, 0x20, 0x40, 0x40],
+            [0xF0, 0x90, 0xF0, 0x90, 0xF0],
+            [0xF0, 0x90, 0xF0, 0x10, 0xF0],
+            [0xF0, 0x90, 0xF0, 0x90, 0x90],
+            [0xE0, 0x90, 0xE0, 0x90, 0xE0],
+            [0xF0, 0x80, 0x80, 0x80, 0xF0],
+            [0xE0, 0x90, 0x90, 0x90, 0xE0],
+            [0xF0, 0x80, 0xF0, 0x80, 0xF0],
+            [0xF0, 0x80, 0xF0, 0x80, 0x80],
+        ];
+
+        let mut curr = 0x050;
+        for font in default_font {
+            for ch in font {
+                chip.memory[curr] = ch;
+                curr += 1;
+            }
+        }
+        chip
+    }
+    fn load_program(&mut self, program: Vec<u8>) {
+        let mut curr = 0x200; //same as 512
+        for opcode in program {
+            self.memory[curr] = opcode;
+            curr += 1;
+        }
+    }
+}
 fn main() {
-    println!("{:?}", size_of::<OpCode>());
-    println!("{:?}", size_of::<Memory>());
-    println!("{:?}", size_of::<CpuRegisters>());
-    println!("{:?}", size_of::<I>());
-    println!("{:?}", size_of::<PC>());
+    let chip8 = Chip8::initialize();
+
+    for r in 0..1 {}
 }
