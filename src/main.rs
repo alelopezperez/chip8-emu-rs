@@ -1,7 +1,7 @@
 // use std::mem::size_of;
 
 // // Op code of chip-8 has a size of 2 bytes = 16 bits, so using a usgined 16 bit type in rust
-// type OpCode = u16;
+type OpCode = u16;
 
 // // Memory of the Chip-8  has access to 4k (4096 bytes) of RAM
 // //Memory Map is how the memory is layed out for usage
@@ -68,6 +68,8 @@
 // // The Keypad one byte per key and key is 0-9 and A-F each key is one byte or 8 bit
 // type KeyPad = [u8; 16];
 
+use std::fs;
+
 // // 60hz = 60 opcode a second.
 use minifb::{Key, Window, WindowOptions};
 
@@ -133,6 +135,8 @@ impl Chip8 {
             curr += 1;
         }
     }
+
+    fn execute(&self) {}
 }
 
 fn from_u8_rgb(r: u8, g: u8, b: u8) -> u32 {
@@ -142,18 +146,60 @@ fn from_u8_rgb(r: u8, g: u8, b: u8) -> u32 {
 fn main() {
     let mut chip8 = Chip8::initialize();
 
-    let mut program = Vec::<u8>::new();
-
-    chip8.load_program(program);
     let mut buffer: Vec<u32> = vec![0; 64 * 32];
 
-    let mut window = Window::new("Test - ESC to exit", 64, 32, WindowOptions::default())
-        .unwrap_or_else(|e| {
-            panic!("{}", e);
-        });
+    let program_bytes = fs::read("IBM_Logo.ch8").unwrap();
+    chip8.load_program(program_bytes);
 
-    loop {
-        // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
-        window.update_with_buffer(&buffer, 64, 32).unwrap();
+    let mut window = Window::new(
+        "Test - ESC to exit",
+        64,
+        32,
+        WindowOptions {
+            borderless: false,
+            resize: false,
+            title: false,
+            scale: minifb::Scale::X8,
+            scale_mode: minifb::ScaleMode::Stretch,
+            topmost: false,
+            transparency: false,
+            none: false,
+        },
+    )
+    .unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
+
+    let zero = [0xF0 as u8, 0x90, 0x90, 0x90, 0xF0];
+
+    let mut curr = 0 as usize;
+    let mut row = 0;
+    for sp in zero {
+        let l = sp.count_ones() + sp.count_zeros();
+
+        for n in (0..l).rev() {
+            print!("{}", sp >> n & 1);
+            if (sp >> n & 1) == 1 {
+                buffer[curr] = from_u8_rgb(0, 127, 255);
+            }
+            curr += 1;
+        }
+        println!();
+        row += 1;
+        curr = row * 64;
+    }
+
+    // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
+    while window.is_open() {
+        let opcode: OpCode = (chip8.memory[chip8.pc as usize] as u16) << 8
+            | chip8.memory[chip8.pc as usize + 1] as u16;
+
+        let nnn = ();
+        let n = ();
+        let x = ();
+        let y = ();
+        let kk = ();
+
+        // window.update_with_buffer(&buffer, 64, 32).unwrap();
     }
 }
