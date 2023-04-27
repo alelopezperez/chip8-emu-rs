@@ -72,6 +72,7 @@ use std::fs;
 
 // // 60hz = 60 opcode a second.
 use minifb::{Key, Window, WindowOptions};
+use rand::random;
 
 struct Chip8 {
     memory: [u8; 4096],
@@ -195,6 +196,8 @@ fn main() {
             | chip8.memory[chip8.pc as usize + 1] as u16;
 
         let first = (opcode & 0xF000) >> 12;
+
+        //nnn addrs
         let nnn = opcode & 0x0FFF;
 
         let x = ((opcode & 0x0F00) >> 8) as u8;
@@ -214,9 +217,8 @@ fn main() {
             0x0 => match nnn {
                 0x0E0 => {
                     //Clear Screen
-                    window
-                        .update_with_buffer(&vec![0; 64 * 32], 64, 32)
-                        .unwrap();
+                    buffer = vec![0; 64 * 32];
+                    window.update_with_buffer(&buffer, 64, 32).unwrap();
                     // Go to next op-code
                     chip8.pc += 2;
                 }
@@ -354,6 +356,8 @@ fn main() {
                             chip8.cpu_registers[0xF as usize] = 1;
                         }
                     }
+                    //incresea pc
+                    chip8.pc += 2;
                 }
                 0x5 => {
                     //8xy5 - SUB Vx, Vy
@@ -366,14 +370,107 @@ fn main() {
                     }
                     chip8.cpu_registers[x as usize] = chip8.cpu_registers[x as usize]
                         .wrapping_sub(chip8.cpu_registers[y as usize]);
+                    //incresea pc
+                    chip8.pc += 2;
+                }
+                0x6 => {
+                    // 8xy6 - SHR Vx {, Vy}
+
+                    // If least significatn bit of cpu register at x == 1; set VF carry flag to 1; other wise 0
+
+                    if chip8.cpu_registers[x as usize] << 7 == 0x80
+                    /*vx & 0x01  */
+                    {
+                        chip8.cpu_registers[0xF] = 1;
+                    } else {
+                        chip8.cpu_registers[0xF] = 0;
+                    }
+
+                    //  Then Vx is divided by 2.
+                    chip8.cpu_registers[x as usize] = chip8.cpu_registers[x as usize] >> 1; // the same as  chip8.cpu_registers[x as usize] /= 2
+
+                    //incresea pc
+                    chip8.pc += 2;
+                }
+                0x7 => {
+                    //8xy7 - SUBN Vx, Vy
+                    //If Vy > Vx, then VF is set to 1
+                    if chip8.cpu_registers[y as usize] > chip8.cpu_registers[x as usize] {
+                        chip8.cpu_registers[0xF] = 1;
+                    } else {
+                        chip8.cpu_registers[0xF] = 0;
+                    }
+
+                    //Set Vx = Vy - Vx
+                    chip8.cpu_registers[x as usize] = chip8.cpu_registers[y as usize]
+                        .wrapping_sub(chip8.cpu_registers[x as usize]);
+
+                    //incresea pc
+                    chip8.pc += 2;
+                }
+
+                0xE => {
+                    //8xyE - SHL Vx {, Vy}
+
+                    if chip8.cpu_registers[x as usize] << 7 == 0x80
+                    /*vx & 0x01  */
+                    {
+                        chip8.cpu_registers[0xF] = 1;
+                    } else {
+                        chip8.cpu_registers[0xF] = 0;
+                    }
+
+                    //then Vx is multiplied by 2.
+                    chip8.cpu_registers[x as usize] = chip8.cpu_registers[x as usize] << 1;
+                    // the same as  chip8.cpu_registers[x as usize] *= 2
+
+                    //incresea pc
+                    chip8.pc += 2;
                 }
                 _ => {
-                    panic!("ERROR UNMACTCHED OPCODE FOR FIRST {:#06X}", opcode);
+                    panic!("ERROR UNMACTCHED OPCODE  {:#06X}", opcode);
                 }
             },
+            0x9 => {
+                //9xy0 - SNE Vx, Vy
+                // if Vx != Vy skip next instruction pc +=4  else pc +=2
+                if chip8.cpu_registers[x as usize] != chip8.cpu_registers[y as usize] {
+                    chip8.pc += 4;
+                } else {
+                    chip8.pc += 2;
+                }
+            }
+            0xA => {
+                //Annn - LD I, addr
+                // Set I = nnn.
+
+                chip8.i = nnn;
+
+                //Increase
+                chip8.pc += 2;
+            }
+            0xB => {
+                //Bnnn - JP V0, addr
+                // PC set to location nnn + V0(cpu register at 0). no pc addition needed
+
+                chip8.pc = nnn + chip8.cpu_registers[0] as u16;
+            }
+
+            0xC => {
+                // Cxkk - RND Vx, byte
+                // Set Vx to random number between  0 to 255 then bitwise AND it with kk
+                chip8.cpu_registers[x as usize] = random::<u8>() & kk;
+
+                //Increase
+                chip8.pc += 2;
+            }
+
+            0xD => {
+                // Dxyn - DRW Vx, Vy, nibble
+            }
 
             _ => {
-                panic!("ERROR UNMACTCHED OPCODE FOR OPCode {:#06X}", opcode);
+                panic!("ERROR UNMACTCHED OPCODE {:#06X}", opcode);
             }
         };
 
