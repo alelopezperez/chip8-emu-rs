@@ -1,5 +1,9 @@
 # chip8-emu-rs
 
+## wrapping_add
+
+if the addition overflows it will wrap to the begining. (255+1) == 0;
+
 ## Rust implementation of a chip-8 interpreter
 
 ## References

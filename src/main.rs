@@ -75,13 +75,13 @@ use minifb::{Key, Window, WindowOptions};
 
 struct Chip8 {
     memory: [u8; 4096],
-    cpu_registers: [u8; 16],
+    cpu_registers: [u8; 16], //called Vx where x is the index
     i: u16,
     pc: u16,
     display: [u8; 64 * 32],
     delay_timer: u8,
     sound_timer: u8,
-    stack: [u16; 16],
+    stack: Vec<u16>,
     stack_pointer: u16,
     key_pad: [u8; 5],
 }
@@ -96,7 +96,7 @@ impl Chip8 {
             display: [0; 64 * 32],
             delay_timer: 0,
             sound_timer: 0,
-            stack: [0x12; 16],
+            stack: Vec::with_capacity(16),
             stack_pointer: 0,
             key_pad: [0; 5],
         };
@@ -194,11 +194,188 @@ fn main() {
         let opcode: OpCode = (chip8.memory[chip8.pc as usize] as u16) << 8
             | chip8.memory[chip8.pc as usize + 1] as u16;
 
-        let nnn = ();
-        let n = ();
-        let x = ();
-        let y = ();
-        let kk = ();
+        let first = (opcode & 0xF000) >> 12;
+        let nnn = opcode & 0x0FFF;
+
+        let x = ((opcode & 0x0F00) >> 8) as u8;
+        let y = ((opcode & 0x00F0) >> 4) as u8;
+
+        let kk = (opcode & 0x00FF) as u8;
+
+        //nibble
+        let n = (opcode & 0x000F) as u8;
+
+        // let opcode = 0xAAFA;
+        // let nnn = opcode & 0x0FFF;
+        // println!("ERROR UNMACTCHED OPCODE FOR FIRST {:#06X}", nnn);
+        // break;
+
+        match first {
+            0x0 => match nnn {
+                0x0E0 => {
+                    //Clear Screen
+                    window
+                        .update_with_buffer(&vec![0; 64 * 32], 64, 32)
+                        .unwrap();
+                    // Go to next op-code
+                    chip8.pc += 2;
+                }
+                0x0EE => {
+                    // Set the program counter PC to the address (value) at the top of the stack,
+                    chip8.pc = chip8.stack.pop().unwrap();
+
+                    // then decrease the stack pointer by one
+                    chip8.stack_pointer -= 1;
+                }
+                _ => {
+                    panic!("THIS SHOULD NOT BE IMPLMENTed");
+                }
+            },
+            0x1 => {
+                // JP addr
+                // set Program Counter to nnn adress.
+                chip8.pc = nnn;
+            }
+
+            0x2 => {
+                // CALL addr
+                // Increment Stack Pointer
+                chip8.stack_pointer += 1;
+
+                // push current PC(program counter) on top of the stack.
+                chip8.stack.push(chip8.pc);
+
+                // Set PC to nnn addr
+                chip8.pc = nnn;
+            }
+
+            0x3 => {
+                // SE Vx, byte
+                // Compare Vx register at pos x to kk skip one insctruction +4 or as normal +2
+
+                if chip8.cpu_registers[x as usize] == kk {
+                    chip8.pc += 4;
+                } else {
+                    chip8.pc += 2;
+                }
+            }
+
+            0x4 => {
+                // SNE Vx, byte
+                // Skip  CPU Register at x is not equal to kk. pc +4
+                if chip8.cpu_registers[x as usize] != kk {
+                    chip8.pc += 4;
+                } else {
+                    chip8.pc += 2;
+                }
+            }
+
+            0x5 => {
+                // SE Vx, Vy
+                // Skip if CPU REGISTER at X  == CPU REGISTER AT Y  pc +4
+
+                if chip8.cpu_registers[x as usize] == chip8.cpu_registers[y as usize] {
+                    chip8.pc += 4;
+                } else {
+                    chip8.pc += 2;
+                }
+            }
+
+            0x6 => {
+                // 6xkk
+
+                // LD Vx, byte
+                //Set  the register at pos X to KK
+                chip8.cpu_registers[x as usize] = kk;
+                chip8.pc += 2;
+            }
+            0x7 => {
+                // 7xkk - ADD Vx, byte
+                // CPU_REGISTER at X add it to KK
+                // What to do if it overflows
+                chip8.cpu_registers[x as usize] = chip8.cpu_registers[x as usize].wrapping_add(kk);
+
+                //increseas pc
+                chip8.pc += 2;
+            }
+
+            0x8 => match n {
+                0x0 => {
+                    // 8xy0 - LD Vx, Vy
+                    // Set CPU Register at x to  CPU REGISTER_ at Y
+                    chip8.cpu_registers[x as usize] = chip8.cpu_registers[y as usize];
+
+                    //increseas pc
+                    chip8.pc += 2;
+                }
+
+                0x1 => {
+                    // 8xy1 - OR Vx, Vy
+                    // SET CPU REGISTER at x to regis[x] BITWISIE OR regis[y]
+                    chip8.cpu_registers[x as usize] =
+                        chip8.cpu_registers[x as usize] | chip8.cpu_registers[y as usize];
+
+                    //incresea pc
+                    chip8.pc += 2;
+                }
+
+                0x2 => {
+                    // 8xy2 - AND Vx, Vy
+                    // Set CPU REGISTER at X to Vx BITWISE AND Vy
+                    chip8.cpu_registers[x as usize] =
+                        chip8.cpu_registers[x as usize] & chip8.cpu_registers[y as usize];
+
+                    //incresea pc
+                    chip8.pc += 2;
+                }
+
+                0x3 => {
+                    // 8xy3 - XOR Vx, Vy
+                    // Set CPU REGISTER at X to Vx BITWISE EXCLUSIVE OR Vy
+                    chip8.cpu_registers[x as usize] =
+                        chip8.cpu_registers[x as usize] ^ chip8.cpu_registers[y as usize];
+
+                    //incresea pc
+                    chip8.pc += 2;
+                }
+                0x4 => {
+                    // 8xy4 - ADD Vx, Vy
+                    // It does and add and if it wraps(overflows) it will set VF (register at 15, of 0xF) to 1;
+                    match chip8.cpu_registers[x as usize]
+                        .checked_add(chip8.cpu_registers[y as usize])
+                    {
+                        Some(total) => {
+                            chip8.cpu_registers[x as usize] = total;
+                            chip8.cpu_registers[0xF as usize] = 0;
+                        }
+                        None => {
+                            chip8.cpu_registers[x as usize] = chip8.cpu_registers[x as usize]
+                                .wrapping_add(chip8.cpu_registers[y as usize]);
+                            chip8.cpu_registers[0xF as usize] = 1;
+                        }
+                    }
+                }
+                0x5 => {
+                    //8xy5 - SUB Vx, Vy
+                    //Set Vx = Vx - Vy, set VF = NOT borrow.
+
+                    if chip8.cpu_registers[x as usize] > chip8.cpu_registers[y as usize] {
+                        chip8.cpu_registers[0xF] = 1;
+                    } else {
+                        chip8.cpu_registers[0xF] = 0;
+                    }
+                    chip8.cpu_registers[x as usize] = chip8.cpu_registers[x as usize]
+                        .wrapping_sub(chip8.cpu_registers[y as usize]);
+                }
+                _ => {
+                    panic!("ERROR UNMACTCHED OPCODE FOR FIRST {:#06X}", opcode);
+                }
+            },
+
+            _ => {
+                panic!("ERROR UNMACTCHED OPCODE FOR FIRST {:#06X}", opcode);
+            }
+        };
 
         // window.update_with_buffer(&buffer, 64, 32).unwrap();
     }
