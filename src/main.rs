@@ -373,7 +373,7 @@ fn main() {
             },
 
             _ => {
-                panic!("ERROR UNMACTCHED OPCODE FOR FIRST {:#06X}", opcode);
+                panic!("ERROR UNMACTCHED OPCODE FOR OPCode {:#06X}", opcode);
             }
         };
 
