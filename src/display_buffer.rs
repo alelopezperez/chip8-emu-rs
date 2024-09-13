@@ -1,0 +1,54 @@
+use crate::{BG_COLOR, HEIGHT, PIXEL_COLOR, WIDTH};
+
+pub struct DisplayBuffer(pub Vec<u32>);
+
+impl DisplayBuffer {
+    fn update_buffer(&mut self, bytes: Vec<u8>, x: usize, y: usize) {
+        let row_major_order_pos = y * WIDTH + x;
+        self.0[row_major_order_pos] = 0;
+    }
+    pub fn xor_write(&mut self, bytes: Vec<u8>, x: usize, y: usize) -> bool {
+        let pixel_vec = bytes_to_pixels(bytes);
+        let mut collision = false;
+
+        for (y_offset, row) in pixel_vec.into_iter().enumerate() {
+            for (x_offset, pixel) in row.into_iter().enumerate() {
+                let row_major_order_pos =
+                    ((y + y_offset) % HEIGHT) * WIDTH + ((x + x_offset) % WIDTH);
+
+                if self.0[row_major_order_pos] == pixel {
+                    self.0[row_major_order_pos] = BG_COLOR;
+                    if pixel == PIXEL_COLOR {
+                        collision = true;
+                    }
+                } else {
+                    self.0[row_major_order_pos] = PIXEL_COLOR;
+                }
+            }
+        }
+
+        collision
+    }
+}
+fn bytes_to_pixels(mut bytes: Vec<u8>) -> Vec<[u32; 8]> {
+    bytes
+        .iter_mut()
+        .map(|byte| {
+            let pixel_row: [u32; 8] = (0..8)
+                .map(|i| {
+                    let pixel = *byte & 0b10000000;
+                    *byte <<= 1;
+
+                    if pixel == 0b10000000 {
+                        PIXEL_COLOR
+                    } else {
+                        BG_COLOR
+                    }
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap();
+            pixel_row
+        })
+        .collect::<Vec<_>>()
+}
