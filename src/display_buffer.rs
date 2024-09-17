@@ -12,9 +12,17 @@ impl DisplayBuffer {
         let mut collision = false;
 
         for (y_offset, row) in pixel_vec.into_iter().enumerate() {
+            let n_y = y + y_offset;
+            if n_y >= HEIGHT {
+                //break;
+            }
             for (x_offset, pixel) in row.into_iter().enumerate() {
-                let row_major_order_pos =
-                    ((y + y_offset) % HEIGHT) * WIDTH + ((x + x_offset) % WIDTH);
+                //let row_major_order_pos = (y + y_offset) * WIDTH + (x + x_offset);
+                let n_x = x + x_offset;
+                if n_x >= WIDTH {
+                    continue;
+                }
+                let row_major_order_pos = (n_y) * WIDTH + (n_x);
 
                 if self.0[row_major_order_pos] == pixel {
                     self.0[row_major_order_pos] = BG_COLOR;
@@ -28,6 +36,10 @@ impl DisplayBuffer {
         }
 
         collision
+    }
+
+    pub fn clear(&mut self) {
+        self.0 = vec![BG_COLOR; WIDTH * HEIGHT];
     }
 }
 fn bytes_to_pixels(mut bytes: Vec<u8>) -> Vec<[u32; 8]> {
