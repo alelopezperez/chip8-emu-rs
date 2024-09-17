@@ -1,6 +1,11 @@
 mod display_buffer;
 use core::panic;
-use std::{fs, usize};
+use std::{
+    fs,
+    thread::sleep,
+    time::{Duration, Instant},
+    usize,
+};
 
 use display_buffer::DisplayBuffer;
 use minifb::{Key, Scale, Window, WindowOptions};
@@ -210,8 +215,14 @@ fn main() {
     let zero_sprite: [u8; 5] = [0b11110000, 0b10010000, 0b10010000, 0b10010000, 0b11110000];
 
     buffer.xor_write(zero_sprite.to_vec(), 61, 0);
+
+    let start_timer = Instant::now();
+    let mut count = 0;
     while display.is_open() && !display.is_key_down(Key::Escape) {
         //display.update_with_buffer(&buffer.0, WIDTH, HEIGHT);
+        // 1000milisec/700 = 1428.57 microsec
+        sleep(Duration::from_micros(1300));
         vm.exec(&mut buffer, &mut display);
+        //count += 1;
     }
 }
