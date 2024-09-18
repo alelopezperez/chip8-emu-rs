@@ -1,4 +1,7 @@
-use crate::{BG_COLOR, HEIGHT, PIXEL_COLOR, WIDTH};
+const WIDTH: usize = 64;
+const HEIGHT: usize = 32;
+const PIXEL_COLOR: u32 = 0;
+const BG_COLOR: u32 = 120;
 
 pub struct DisplayBuffer(pub Vec<u32>);
 
