@@ -11,13 +11,14 @@ impl DisplayBuffer {
         self.0[row_major_order_pos] = 0;
     }
     pub fn xor_write(&mut self, bytes: Vec<u8>, x: usize, y: usize) -> bool {
+        println!(" HEYYY {x} {y}");
         let pixel_vec = bytes_to_pixels(bytes);
         let mut collision = false;
 
         for (y_offset, row) in pixel_vec.into_iter().enumerate() {
             let n_y = y + y_offset;
             if n_y >= HEIGHT {
-                //break;
+                break;
             }
             for (x_offset, pixel) in row.into_iter().enumerate() {
                 //let row_major_order_pos = (y + y_offset) * WIDTH + (x + x_offset);

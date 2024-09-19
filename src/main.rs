@@ -39,13 +39,12 @@ fn main() {
 
     buffer.xor_write(zero_sprite.to_vec(), 61, 0);
 
-    let mut start_timer = Instant::now();
+    let start_timer = Instant::now();
     while display.is_open() && !display.is_key_down(Key::Escape) {
         //display.update_with_buffer(&buffer.0, WIDTH, HEIGHT);
         // 1000milisec/700 = 1428.57 microsec
         //sleep(Duration::from_micros(1300));
-        if start_timer.elapsed().as_millis() >= 16 {
-            start_timer = Instant::now();
+        if start_timer.elapsed().as_millis() % 16 == 0 {
             if vm.delay_timer > 0 {
                 vm.delay_timer -= 1;
             }

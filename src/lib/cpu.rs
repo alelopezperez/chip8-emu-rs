@@ -1,4 +1,5 @@
-use crate::display_buffer::DisplayBuffer;
+use super::display_buffer::DisplayBuffer;
+use minifb::Window;
 
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
