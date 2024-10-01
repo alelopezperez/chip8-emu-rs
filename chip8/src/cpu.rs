@@ -1,10 +1,12 @@
-use super::display_buffer::DisplayBuffer;
-use minifb::Window;
+use core::panic;
+use std::usize;
 
-const WIDTH: usize = 64;
-const HEIGHT: usize = 32;
-const PIXEL_COLOR: u32 = 0;
-const BG_COLOR: u32 = 120;
+use super::display_buffer::DisplayBuffer;
+
+pub const WIDTH: usize = 64;
+pub const HEIGHT: usize = 32;
+pub const PIXEL_COLOR: u32 = 0;
+pub const BG_COLOR: u32 = 120;
 
 pub struct Chip8VM {
     memory: [u8; 4096],
@@ -14,7 +16,9 @@ pub struct Chip8VM {
     pub sound_timer: u8,
     program_counter: u16,
     stack_pointer: u8,
+    pub draw: bool,
     stack: [u16; 20],
+    pub keys: [bool; 16],
 }
 
 impl Chip8VM {
@@ -47,6 +51,8 @@ impl Chip8VM {
             program_counter: 0x200,
             stack_pointer: 15,
             stack: [0; 20],
+            keys: [false; 16],
+            draw: false,
         };
         let mut start_font = 0x50;
         for font in default_font {
@@ -64,7 +70,7 @@ impl Chip8VM {
         }
     }
 
-    pub fn exec(&mut self, buffer: &mut DisplayBuffer, display: &mut minifb::Window) {
+    pub fn exec(&mut self, buffer: &mut DisplayBuffer) {
         // Fetch from PC
         let opcode: u16 = (self.memory[self.program_counter as usize] as u16) << 8
             | self.memory[self.program_counter as usize + 1] as u16;
@@ -87,17 +93,15 @@ impl Chip8VM {
         let y = ((opcode & 0x00F0) >> 4) as u8;
         let kk = (opcode & 0x00FF) as u8;
 
+        println!("OPCODE {}", opcode);
+
         self.program_counter += 2;
 
         match first {
             0x0 => match nnn {
                 0x0E0 => {
                     buffer.clear();
-                    display
-                        .update_with_buffer(&buffer.0, WIDTH, HEIGHT)
-                        .unwrap();
-
-                    //self.program_counter += 2;
+                    self.draw = true;
                 }
                 0x0EE => {
                     // 00EE - RET
@@ -332,13 +336,11 @@ impl Chip8VM {
                 }
 
                 self.v_general_registers[0xF_usize] =
-                    buffer.xor_write(bytes, vx as usize % WIDTH, vy as usize % HEIGHT) as u8;
+                    buffer.xor_write(bytes, vx as usize, vy as usize) as u8;
 
-                display
-                    .update_with_buffer(&buffer.0, WIDTH, HEIGHT)
-                    .unwrap();
+                self.draw = true;
 
-                //self.program_counter += 2;
+                println!("buffer updateed");
             }
             // EX9E and EXA1: Skip if key
             0xE => match kk {
@@ -347,12 +349,11 @@ impl Chip8VM {
                     // Skip next instruction if key with the value of Vx is pressed.
                     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the down position,
                     // PC is increased by 2.
-                    let is_key_down = display
-                        .get_keys()
-                        .iter()
-                        .any(|&key| key as u8 == self.v_general_registers[x as usize]);
+                    println!("                  Alego display 1");
 
-                    self.program_counter += 2 * is_key_down as u16;
+                    let key_is_down = self.keys[self.v_general_registers[x as usize] as usize];
+
+                    self.program_counter += 2 * key_is_down as u16;
                 }
                 0xA1 => {
                     // ExA1 - SKNP Vx
@@ -360,12 +361,11 @@ impl Chip8VM {
                     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position,
                     // PC is increased by 2.
 
-                    let is_key_down = !display
-                        .get_keys()
-                        .iter()
-                        .any(|&key| key as u8 == self.v_general_registers[x as usize]);
+                    println!("                  Alego display 2");
 
-                    self.program_counter += 2 * is_key_down as u16;
+                    let key_is_down = !self.keys[self.v_general_registers[x as usize] as usize];
+
+                    self.program_counter += 2 * key_is_down as u16;
                 }
                 _ => {
                     panic!("ERROR in 9")
@@ -385,11 +385,22 @@ impl Chip8VM {
                         // Wait for a key press, store the value of the key in Vx.
                         // All execution stops until a key is pressed, then the value of that key is stored in Vx.
 
-                        while display.get_keys().is_empty() {}
+                        //while display.get_keys().is_empty() {
+                        //    println!("BUSY LOOP");
+                        //}
+                        //
+                        let any_key = self.keys.iter().enumerate().find(|(key, &val)| val);
 
-                        let pressed_key = display.get_keys()[0] as u8;
+                        //let pressed_key = display.get_keys()[0] as u8;
 
-                        self.v_general_registers[x as usize] = pressed_key;
+                        if let Some((key, _)) = any_key {
+                            self.v_general_registers[x as usize] = key as u8;
+                        } else {
+                            self.program_counter -= 2;
+                        }
+                        //let pressed_key = display.get_keys()[0] as u8;
+
+                        //self.v_general_registers[x as usize] = pressed_key;
                     }
                     0x15 => {
                         // Fx15 - LD DT, Vx
@@ -465,6 +476,5 @@ impl Chip8VM {
                 panic!("WOOH")
             }
         }
-        //self.program_counter += 2;
     }
 }

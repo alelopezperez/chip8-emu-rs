@@ -6,10 +6,6 @@ const BG_COLOR: u32 = 120;
 pub struct DisplayBuffer(pub Vec<u32>);
 
 impl DisplayBuffer {
-    fn update_buffer(&mut self, bytes: Vec<u8>, x: usize, y: usize) {
-        let row_major_order_pos = y * WIDTH + x;
-        self.0[row_major_order_pos] = 0;
-    }
     pub fn xor_write(&mut self, bytes: Vec<u8>, x: usize, y: usize) -> bool {
         println!(" HEYYY {x} {y}");
         let pixel_vec = bytes_to_pixels(bytes);
