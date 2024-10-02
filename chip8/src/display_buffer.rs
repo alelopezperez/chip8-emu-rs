@@ -3,6 +3,7 @@ const HEIGHT: usize = 32;
 const PIXEL_COLOR: u32 = 0;
 const BG_COLOR: u32 = 120;
 
+#[derive(Clone)]
 pub struct DisplayBuffer(pub Vec<u32>);
 
 impl DisplayBuffer {
